@@ -30,7 +30,7 @@ ROOT's `hadd` utility can be used to merge together the output files from multip
 ### Usage
 
 ```bash
-python process_pmt_waveforms.py \
+python process_waveforms_for_charge_distributions.py \
     --base-path /path/to/data/ \
     --run 2307 \
     --out-file output/processed_hits.root \
@@ -150,20 +150,20 @@ python find_pmt_time_offsets.py \
     --out-file R2307/offsets/pmt_offsets.root
 
 # Step 2 (default): process waveforms with hybrid monitor+offset mode
-python process_pmt_waveforms.py \
+python process_waveforms_for_charge_distributions.py \
     --base-path R2307/data --run 2307 \
     --out-file R2307/processed/hits_hybrid.root \
     --offset-file R2307/offsets/pmt_offsets.root
 
 # Step 2 alternative: fixed-offset mode (no pulse finding)
-python process_pmt_waveforms.py \
+python process_waveforms_for_charge_distributions.py \
     --base-path R2307/data --run 2307 \
     --out-file R2307/processed/hits_fixed_offset.root \
     --offset-file R2307/offsets/pmt_offsets.root \
     --no-pulse-finding
 
 # Step 2 alternative: pulse-finding-only mode (no monitor PMT, and step 1 can be skipped)
-python process_pmt_waveforms.py \
+python process_waveforms_for_charge_distributions.py \
     --base-path R2307/data --run 2307 \
     --out-file R2307/processed/hits_no_monitor.root \
     --no-use-monitor-pmt

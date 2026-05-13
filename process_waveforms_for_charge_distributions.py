@@ -11,7 +11,7 @@ Use --no-pulse-finding to use fixed offset windows, or --no-monitor-pmt
 to disable monitor-based modes and use pulse-finding only.
 
 Usage:
-    python process_pmt_waveforms.py \
+    python process_waveforms_for_charge_distributions.py \
         --base-path /path/to/root/files \
         --run 1234 \
         --out-file output.root \
