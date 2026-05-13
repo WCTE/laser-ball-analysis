@@ -82,13 +82,14 @@ Expected filename pattern: `WCTE_offline_R{run}S0P{part}.root` under `--base-pat
 
 One ROOT tree per mPMT card, named `card_{id}_slot_{slot}` (or `card_{id}` for cards 13x that still have their waveforms processed, despite not being actual mPMTs and so have no slot number), each with one entry per hit and the following branches:
 
-| Branch          | Type  | Description                                        |
-|-----------------|-------|----------------------------------------------------|
-| `channel_ids`   | int   | PMT channel ID within the card                     |
-| `pmt_positions` | int   | PMT position from detector mapping                 |
-| `event_numbers` | int   | Source event number                                |
-| `times`         | float | Hit time in ns, absolute within the readout window |
-| `charges`       | float | Integrated charge in ADC counts                    |
+| Branch           | Type  | Description                                                                |
+|------------------|-------|----------------------------------------------------------------------------|
+| `channel_ids`    | int   | PMT channel ID within the card                                             |
+| `pmt_positions`  | int   | PMT position from detector mapping                                         |
+| `event_numbers`  | int   | Source event number                                                        |
+| `times`          | float | Hit time in ns, absolute within the readout window                         |
+| `charges`        | float | Integrated charge in ADC counts                                            |
+| `is_pulse_found` | bool  | For `--pulse-finding`, whether a pulse was found or below threshold charge |
 
 ---
 

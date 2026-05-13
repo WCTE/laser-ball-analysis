@@ -70,9 +70,11 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
 
     Returns
     -------
-    dict  {card_id: (hit_times, hit_charges)}
+    dict  {card_id: hit data arrays}
           hit_times in ns (absolute, relative to start of readout window)
           hit_charges in ADC counts (integrated over the pulse)
+          is_pulse_found indicates whether the charge is a found pulse (as opposed to below threshold), only included
+           when pulse-finding is used
     """
     slice_len    = 12
     peak_position = 8
@@ -85,6 +87,7 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
     hit_times = []
     hit_charges = []
     hit_event_nums = []
+    hit_is_pulse_found = [] if (hybrid_offset_pulse or offsets is None) else None
     warn_no_hit = True
     warn_multiple_hit = True
     for event in batch:
@@ -122,6 +125,7 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
             good = hit_offsets != -999
             hit_wf_index = np.arange(n_waveforms)[good]
             hit_indices = hit_indices[good]
+            is_pulse_found = np.zeros(len(hit_wf_index), dtype=np.bool_)
 
             if hybrid_offset_pulse and len(hit_wf_index) > 0:
                 # Pick search bounds so do_pulse_finding_fast valid columns map to offset +/-3
@@ -140,23 +144,28 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
                 if len(seed_rows) > 0:
                     hit_indices[seed_rows] = search_start[seed_rows] + seed_cols
                     np.clip(hit_indices, min_peak_sample, max_peak_sample, out=hit_indices)
+                    is_pulse_found[seed_rows] = True
         else:
             hit_wf_index, hit_indices = do_pulse_finding_fast(waveforms)
             good = (hit_indices >= min_peak_sample) & (hit_indices <= max_peak_sample)
             hit_wf_index = hit_wf_index[good]
             hit_indices = hit_indices[good]
+            found_flags = np.ones(len(hit_wf_index), dtype=np.bool_)
             # Fallback: for waveforms with no found pulse use argmax of the waveform.
             no_hit_rows = np.full(n_waveforms, True, dtype=bool)
             no_hit_rows[hit_wf_index] = False
+            fallback_count = int(np.count_nonzero(no_hit_rows))
             fallbacks = np.clip(
                 np.argmax(waveforms[no_hit_rows], axis=1),
                 min_peak_sample, max_peak_sample,
             ).astype(np.intp)
             hit_wf_index = np.concatenate([hit_wf_index, np.where(no_hit_rows)[0]])
             hit_indices = np.concatenate([hit_indices, fallbacks])
+            is_pulse_found = np.concatenate([found_flags, np.zeros(fallback_count, dtype=np.bool_)])
             order = np.argsort(hit_wf_index, kind="stable")
             hit_wf_index = hit_wf_index[order]
             hit_indices = hit_indices[order]
+            is_pulse_found = is_pulse_found[order]
 
         # build per-hit waveform slices (mirrors hw_trigger_wf_processing.py)
 
@@ -174,6 +183,8 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
         hit_card_ids.extend(card_ids[hit_wf_index])
         hit_channel_ids.extend(channel_ids[hit_wf_index])
         hit_event_nums.append(np.repeat(event_num, len(hit_wf_index)))
+        if hit_is_pulse_found is not None:
+            hit_is_pulse_found.append(is_pulse_found)
 
     if len(hit_times) == 0:
         print("[WARN] No valid hits (probably because no monitor PMT pulses to offset to)")
@@ -184,6 +195,8 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
     hit_card_ids = np.array(hit_card_ids)
     hit_channel_ids = np.array(hit_channel_ids)
     hit_event_nums = np.concatenate(hit_event_nums)
+    if hit_is_pulse_found is not None:
+        hit_is_pulse_found = np.concatenate(hit_is_pulse_found)
 
     # Group results by card
     unique_cards, hit_card = np.unique(hit_card_ids, axis=0, return_inverse=True)
@@ -195,14 +208,21 @@ def process_batch(batch, offsets=None, hybrid_offset_pulse=False):
     hit_times_sorted = hit_times[sort_order]
     hit_charges_sorted = hit_charges[sort_order]
     event_num_sorted = hit_event_nums[sort_order]
+    is_pulse_found_sorted = None
+    if hit_is_pulse_found is not None:
+        is_pulse_found_sorted = hit_is_pulse_found[sort_order]
     split_points = np.searchsorted(hit_card_sorted, np.arange(len(unique_cards) + 1))
     hits_by_card = {}
     for i, card in enumerate(unique_cards):
         start, end = split_points[i], split_points[i + 1]
-        hits_by_card[card] = {"channel_ids": hit_channels_sorted[start:end],
-                              "times": hit_times_sorted[start:end],
-                              "charges": hit_charges_sorted[start:end],
-                              "event_numbers": event_num_sorted[start:end]}
+        card = int(card)
+        card_hits = {"channel_ids": hit_channels_sorted[start:end],
+                     "times": hit_times_sorted[start:end],
+                     "charges": hit_charges_sorted[start:end],
+                     "event_numbers": event_num_sorted[start:end]}
+        if is_pulse_found_sorted is not None:
+            card_hits["is_pulse_found"] = is_pulse_found_sorted[start:end]
+        hits_by_card[card] = card_hits
     return hits_by_card
 
 
@@ -216,10 +236,10 @@ def run_pipeline(run, base_path, out_file, part=None, batch_size="100 MB", max_e
     offsets = None
     if monitor_pmt:
         offset_arrays = uproot.open(offset_file)["pmt_offsets"].arrays()
-        cards = offset_arrays["mpmt_card_id"]
-        channels = offset_arrays["pmt_channel_id"]
-        offset_values = offset_arrays["offset"]
-        offsets = np.full((np.max(cards)+1, np.max(channels)+1), -999)
+        cards = np.asarray(offset_arrays["mpmt_card_id"], dtype=np.intp)
+        channels = np.asarray(offset_arrays["pmt_channel_id"], dtype=np.intp)
+        offset_values = np.asarray(offset_arrays["offset"], dtype=np.intp)
+        offsets = np.full((np.max(cards) + 1, np.max(channels) + 1), -999, dtype=np.intp)
         offsets[cards, channels] = offset_values
 
     part_str = part if part is not None else "*"
