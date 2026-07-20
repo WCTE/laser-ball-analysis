@@ -445,7 +445,7 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
     PICKLE_DIR = 'pickle_dir/'+f'{run}'  
     directory = Path(PICKLE_DIR)
     directory.mkdir(parents=True, exist_ok=True)
-    filename = f"pickle_dir/{run}/results_array"+card+".pkl"
+    filename = f"pickle_dir/{run}/results_array{card}.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(result_arrays, f)
     return result_arrays
