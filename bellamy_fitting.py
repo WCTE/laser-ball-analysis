@@ -362,7 +362,7 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                     ax_gaus[channel // 5, channel % 5].set_xlim(PLOT_CONFIG['xlim_bottom_gaus'], PLOT_CONFIG['xlim_top_gaus'])
                     
                     r2 = calculate_r_squared(hist, result)
-                    chi = result.chisqr/len(bins)
+                    chi = result.redchi
                     
                     logger.info(f"Card {card} Channel {channel}: R² = {r2:.4f}, χ² = {chi:.2f}")
                     
