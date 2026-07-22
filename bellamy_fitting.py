@@ -16,6 +16,7 @@ from platform import python_version
 from typing import List, Dict, Any, Optional
 import copy
 import argparse
+from pathlib import Path
 
 from scipy.special import erf, erfc, erfcx
 import numpy as np
@@ -39,20 +40,26 @@ import uproot
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DEFAULT_RUN_NUM = "2307"
 DEFAULT_MODEL = "bellamy"
 
 # Plot configuration
 PLOT_CONFIG = {
-    'bins': (-50, 400, 1),
-    'draw_function_bins': (-50, 400, 1),
+    'bins': (-50, 800, 1),
+    'draw_function_bins': (-50, 800, 1),
     'ylim_bottom': 1,
     'ylim_top': 1e7,
     'ylim_top_gaus': 1e7,
     'xlim_bottom': -50,
-    'xlim_top': 400,
+    'xlim_top': 800,
     'xlim_bottom_gaus': -50,
-    'xlim_top_gaus': 400,
+    'xlim_top_gaus': 800,
+    
+    'times_bins': (-50, 800, 1),
+    'times_ylim_bottom': 1,
+    'times_ylim_top': 1e7,
+    'times_xlim_bottom': -50,
+    'times_xlim_top': 800,
+    
     'subplot_shape': (4, 5),
     'subplot_size': (24, 14),
 }
@@ -62,11 +69,11 @@ INITIAL_PARAMS = {
     'N': {'value': 3e3},
     'Q0': {'value': 0},
     's0': {'value': 2},
-    'Q1': {'value': 130},
-    's1': {'value': 40},
-    'alpha': {'value': 0.008},
-    'mu': {'value': 0.01},
-    'w': {'value': 0.01},
+    'Q1': {'value': 130, 'min': 110, 'max': 160},
+    's1': {'value': 50, 'min': 40, 'max': 70},
+    'alpha': {'value': 0.008, 'min': 1e-6, 'max': 0.04},
+    'mu': {'value': 0.01, 'min': 0.05, 'max': 20},
+    'w': {'value': 0.01, 'min': 0.001, 'max': 0.5},
 }
 
 INITIAL_GAUS_PARAMS = {
@@ -102,7 +109,7 @@ def gauss_response(x: np.ndarray, N: float, Q0: float, s0: float, Q1: float,
                  s1: float, mu: float, w: float) -> np.ndarray:
     signal = np.zeros_like(x, dtype=float)
     
-    for n in range(3):
+    for n in range(20):
         Qn = Q0 + n * Q1
         s_n = np.sqrt(s0 ** 2 + n * s1 ** 2)
         
@@ -129,7 +136,7 @@ def background_response(x: np.ndarray, N: float, Q0: float, s0: float, Q1: float
                  s1: float, mu: float, w: float, alpha: float) -> np.ndarray:
     signal = np.zeros_like(x, dtype=float)
     
-    for n in range(3):
+    for n in range(20):
         Qn = Q0 + n * Q1
         s_n = np.sqrt(s0 ** 2 + n * s1 ** 2)
         
@@ -172,7 +179,7 @@ def pmt_response(x: np.ndarray, N: float, Q0: float, s0: float, Q1: float,
     """
     signal = np.zeros_like(x, dtype=float)
     
-    for n in range(3):
+    for n in range(20):
         Qn = Q0 + n * Q1
         s_n = np.sqrt(s0 ** 2 + n * s1 ** 2)
         
@@ -187,7 +194,7 @@ def pmt_response(x: np.ndarray, N: float, Q0: float, s0: float, Q1: float,
         threshold = Q0
         mask = x > threshold
         theta = mask.astype(int) 
-        exp_term = theta * alpha / 2 * np.exp(-alpha * (x - Qn - alpha * s_n ** 2 / 2))
+        exp_term = theta * alpha / 2 * np.float128(np.exp(-alpha * (x - Qn - alpha * s_n ** 2 / 2)))
         
         erf_arg = x - Qn - s_n ** 2 * alpha
         erf1 = math.erf(abs(Q0 - Q1 - s_n ** 2 * alpha) / (s_n * np.sqrt(2)))
@@ -267,6 +274,9 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                            figsize=PLOT_CONFIG['subplot_size'])
     fig_chi, ax_chi = plt.subplots(*PLOT_CONFIG['subplot_shape'], 
                            figsize=PLOT_CONFIG['subplot_size'])
+    fig_times, times_ax = plt.subplots(*PLOT_CONFIG['subplot_shape'], 
+                           figsize=PLOT_CONFIG['subplot_size'])
+    plt.minorticks_on()
     
     pedestal_model, pedestal_params_template = create_pedestal_model()
     pmt_model, params_template = create_pmt_response_model()
@@ -278,12 +288,29 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
         counter += 1
         card = card_id
         channel = data['channel_ids'][row]
+        unfiltered_charges = data["charges"][data["channel_ids"]==row]
+        unfiltered_times = data["times"][data["channel_ids"]==row]
+
+        time_threshold = 1e12  # Replace with your chosen threshold
+        mask = unfiltered_times < time_threshold
+        charges = unfiltered_charges[mask]
+        times = unfiltered_times[mask]
+
         charges = data["charges"][data["channel_ids"]==row]
+        times = data["times"][data["channel_ids"]==row]
+        
+        num_bins = 100
+        data_min, data_max = np.min(times), np.max(times)
+        times_bins = np.linspace(data_min, data_max, num_bins)
         
         # Create histogram
         bins = np.arange(*PLOT_CONFIG['bins'])
+        
         bin_centres = bins[:-1] + (bins[1] - bins[0]) / 2
         hist, _ = np.histogram(charges, bins=bins)
+        
+        times_bin_centres = times_bins[:-1] + (times_bins[1] - times_bins[0]) / 2
+        times_hist, _times = np.histogram(times, bins=times_bins)
         
         # Plot histogram
         ax[channel // 5, channel % 5].cla()
@@ -302,9 +329,34 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                                                 PLOT_CONFIG['ylim_top_gaus'])
         ax_gaus[channel // 5, channel % 5].set_yscale('log')
 
+        times_ax[channel // 5, channel % 5].cla()
+        times_ax[channel // 5, channel % 5].hist(times, bins=times_bins)
+        times_ax[channel // 5, channel % 5].minorticks_on()
+        times_ax[channel // 5, channel % 5].set_title(f"Channel {channel}")
+        fig_times.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_times_card_{card}.pdf"))
+
         n, bins, patches = ax[channel // 5, channel % 5].hist(charges, bins=bins)
         mode_bin_midpoint = (bins[np.argmax(n)] + bins[np.argmax(n) + 1]) / 2
- 
+
+        # TGraph storage 
+        counts, bin_edges, _ = ax[channel // 5, channel % 5].hist(charges, bins=bins)
+        x_array = ROOT.Double_t(len(bin_centres))
+        y_array = ROOT.Double_t(len(counts))
+        x_array = np.array(bin_centres, dtype=np.float64)
+        y_array = np.array(counts, dtype=np.float64)
+        graph = ROOT.TGraph(len(counts), x_array, y_array)
+        graph.SetTitle("Graph from Histogram;X-axis;Y-axis")
+        file = ROOT.TFile(os.path.join(FIGURE_DIR, f"Graph_run_{run}_card_{card}_channel_{channel}.root"), "RECREATE")
+        graph.Write("my_graph")
+        file.Close()
+        canvas = ROOT.TCanvas("canvas", "Graph Canvas", 800, 600)
+        graph.Draw("AL")
+        canvas.SetLogy(1)
+        canvas.Draw()
+        canvas.SaveAs(os.path.join(FIGURE_DIR, f"Graph_run_{run}_card_{card}_channel_{channel}.pdf"))
+        del graph
+        del canvas
+        
         # 1 pe position
         low, high = 150, 250
         mask = (bins[:-1] >= low) & (bins[:-1] < high)
@@ -333,18 +385,16 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
         # set seeds and ranges 
         temp_params = copy.deepcopy(INITIAL_PARAMS)
         temp_params['N']['value'] = integral  
-        INITIAL_GAUS_PARAMS['N']['value'] = integral  
+        temp_gaus_params = copy.deepcopy(INITIAL_GAUS_PARAMS)
+        temp_gaus_params['N']['value'] = integral  
         temp_params['Q0']['value'] = mode_bin_midpoint  
-        temp_params['Q1']['value'] = max_bin_midpoint  
 
         if model == "bellamy":
             try:
-             r2 = 0  
-             count = 0
-             while r2 < 0.992 and count < 1:
+                r2 = 0  
                 # Perform fit
-                params = pedestal_model.make_params(**INITIAL_GAUS_PARAMS, method='brute', max_nfev=100000)
-                result = pedestal_model.fit(hist[40:390], params, x=bin_centres[40:390])
+                params = pedestal_model.make_params(**temp_gaus_params, method='brute', max_nfev=100000)
+                result = pedestal_model.fit(hist[40:2990], params, x=bin_centres[40:2990])
                 
                 if result.success:
                     # Extract fit parameters
@@ -373,25 +423,22 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                     plot_result = [fit_params[k] for k in ['N', 'Q0', 's0']]
                     ax_gaus[channel // 5, channel % 5].plot(bin_centres, pedestal_response(bin_centres, *plot_result),label=f'fitted line')
                     ax_gaus[channel // 5, channel % 5].legend(loc='best')
-                    count += 1
                     
                 else:
                     logger.warning(f"Fit failed for Card {card} Channel {channel}")
                     fit_data = [card, channel] + [None] * 10
-                    count += 1
                     
             except Exception as e:
                 logger.error(f"Error fitting Card {card} Channel {channel}: {e}")
                 fit_data = [card, channel] + [None] * 10
             
             gaus_result_array[row] = fit_data
-            fig_gaus.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gaus_card_{card}.png"))
+            fig_gaus.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gaus_card_{card}.pdf"))
             fig_gaus_res.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gaus_card_{card}_res.png"))
             fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gaus_card_{card}_chi.png"))
             
-            r2 = 0  
-            count = 0
-            while r2 < 0.992 and count < 1:
+            try:
+                r2 = 0  
                 # Perform fit
                 params = pmt_model.make_params(**temp_params, method='brute', max_nfev=100000)
                 params['Q0'].set(vary=False)
@@ -416,8 +463,8 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
         
                     del contribution_params['alpha']
 
-                    #ax[channel // 5, channel % 5].plot(draw_function_bin_centres, gauss_response(draw_function_bin_centres, **contribution_params),label=f'gaussian')
-                    #ax[channel // 5, channel % 5].plot(draw_function_bin_centres, background_response(draw_function_bin_centres, **temp_params),label=f'background')
+                    ax[channel // 5, channel % 5].plot(bin_centres, gauss_response(bin_centres, **contribution_params),label=f'gaussian')
+                    ax[channel // 5, channel % 5].plot(bin_centres, background_response(bin_centres, **temp_params),label=f'background')
                     
                     r2 = calculate_r_squared(hist, result)
                     chi = result.chisqr/len(bins)
@@ -434,12 +481,18 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                     plot_result = [fit_params[k] for k in ['N', 'Q0', 's0', 'Q1', 's1', 'mu', 'w', 'alpha']]
                     ax[channel // 5, channel % 5].plot(bin_centres, pmt_response(bin_centres, *plot_result),label=f'fitted line')
                     ax[channel // 5, channel % 5].legend(loc='best')
-                    count += 1
                     
+                else:
+                    logger.warning(f"Fit failed for Card {card} Channel {channel}")
+                    fit_data = [card, channel] + [None] * 10
+                    
+            except Exception as e:
+                logger.error(f"Error fitting Card {card} Channel {channel}: {e}")
+                fit_data = [card, channel] + [None] * 10
             result_array[row] = fit_data
-            fig.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_bellamy_card_{card}.png"))
-            fig_res.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_bellamy_card_{card}_res.png"))
-            fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_bellamy_card_{card}_chi.png"))
+            fig.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_bellamy_card_{card}.pdf"))
+            fig_res.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_bellamy_card_{card}_res.pdf"))
+            fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_bellamy_card_{card}_chi.pdf"))
     
     result_arrays = [gaus_result_array, result_array]
     PICKLE_DIR = 'pickle_dir/'+f'{run}'  
@@ -464,6 +517,7 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
     Returns:
         DataFrame with all fit results
     """
+    FIGURE_DIR = 'figures/'+f'{run_num}'  
     file_pattern = f"{base_path}/{run_num}/processed_hits.root"
     file_list = sorted(glob.glob(file_pattern))
     
@@ -481,10 +535,10 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
             for tree_name, tree in file.items():
                 card_id = int(re.search(r'\d+', tree_name).group())
                 if int(card_id) != int(card): continue 
-                branches = ["channel_ids", "charges", "pmt_positions"]
+                branches = ["channel_ids", "charges", "pmt_positions", "times"]
                 data = tree.arrays(branches, library="np")
-                fit_data = charge_fit(data, run_num, model="bellamy", remove_sat=remove_sat, card_id=str(card_id))
-                fit_arr.extend(fit_data)
+    fit_data = charge_fit(data, run_num, model="bellamy", remove_sat=remove_sat, card_id=str(card_id))
+    fit_arr.extend(fit_data)
 
     # Create results DataFrame
     fig_gain, ax_gain = plt.subplots(1, 1)
@@ -522,14 +576,14 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
         ax_gain.set_title(f"Gain vs. PMT {card}")
         ax_gain.set_xlabel('PMT')
         ax_gain.set_ylabel('Gain')
-        fig_gain.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_CARD_"+card+"_gains.png"))
+        fig_gain.savefig(os.path.join(FIGURE_DIR, f"Run_{run_num}_CARD_"+card+"_gains.pdf"))
         
         # mu variation
         ax_mu.scatter(PMT, fit_frame['mu'], color='red', alpha=0.6, s=10)  
         ax_mu.set_title(f'mu vs. PMT {card}')
         ax_mu.set_xlabel('PMT')
         ax_mu.set_ylabel('mu')
-        fig_mu.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_CARD_"+card+"_mu.png"))
+        fig_mu.savefig(os.path.join(FIGURE_DIR, f"Run_{run_num}_CARD_"+card+"_mu.pdf"))
 
         figures = {}
         axes = {} 
@@ -546,10 +600,10 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
        
            if i == 'chi/NDF': 
               save = 'chi'
-              filename = f"Run_{DEFAULT_RUN_NUM}_CARD_"+card+f"_gainVS{save}.png"   
+              filename = f"Run_{run_num}_CARD_"+card+f"_gainVS{save}.pdf"   
               figures[i].savefig(os.path.join(FIGURE_DIR, filename))                                        
            else:
-              filename = f"Run_{DEFAULT_RUN_NUM}_CARD_"+card+f"_gainVS{i}.png"
+              filename = f"Run_{run_num}_CARD_"+card+f"_gainVS{i}.pdf"
               figures[i].savefig(os.path.join(FIGURE_DIR, filename))                                        
               plt.close(figures[i])
            j += 1
@@ -576,7 +630,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--base-path",   type=str, required=True,
                         help="Directory containing input ROOT files")
-    parser.add_argument("--run",         type=int, required=True,
+    parser.add_argument("--run",         type=str, required=True,
                         help="Run number")
     parser.add_argument("--card",         type=int, required=True,
                         help="Card number")

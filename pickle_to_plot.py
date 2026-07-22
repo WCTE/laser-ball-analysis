@@ -27,7 +27,7 @@ def create_combined_histogram(base_path, run):
     directory.mkdir(parents=True, exist_ok=True)
     
     # 1. Find all matching pickle files
-    FILE_PATTERN = f"{base_path}/run/*.pkl"          
+    FILE_PATTERN = f"{base_path}/{run}/*.pkl"          
     print(FILE_PATTERN)
     files = glob.glob(FILE_PATTERN)
     
@@ -137,7 +137,7 @@ def create_combined_histogram(base_path, run):
     ax.set_title('Gain')
     ax.set_xlabel('Gain')
     ax.set_ylabel('No. of entries')
-    fig.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gain.png"))
+    fig.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gain.png"))
     
     fig_gain, ax_gain = plt.subplots(1, 1)
     mean_gain = combined_gain_data.mean()
@@ -155,92 +155,83 @@ def create_combined_histogram(base_path, run):
     ax_gain.set_title('Gain vs. PMT')
     ax_gain.set_xlabel('PMT')
     ax_gain.set_ylabel('Gain')
-    fig_gain.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gains.png"))
+    fig_gain.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gains.png"))
         
     fig_mu, ax_mu = plt.subplots(1, 1)
     ax_mu.scatter(combined_PMT_data, combined_mu_data, color='red', alpha=0.6, s=10)  
     ax_mu.set_title('mu vs. PMT')
     ax_mu.set_xlabel('PMT')
     ax_mu.set_ylabel('mu')
-    fig_mu.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_mu.png"))
+    fig_mu.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_mu.png"))
     
     fig_gainmu, ax_gainmu = plt.subplots(1, 1)
     ax_gainmu.scatter(combined_gain_data, combined_mu_data, color='red', alpha=0.6, s=10)  
     ax_gainmu.set_title('gain vs. mu')
     ax_gainmu.set_xlabel('gain')
     ax_gainmu.set_ylabel('mu')
-    fig_gainmu.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gainVSmu.png"))
+    fig_gainmu.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gainVSmu.png"))
     
     eventDisplay = EventDisplay.EventDisplay() 
     eventDisplay.load_mPMT_positions('mPMT_2D_projection_angles.csv')
     ev_disp_data = eventDisplay.process_data(combined_PMTslot_data,combined_gain_data,sum_data=False, average_data=False)
     eventDisplay.plotEventDisplay(ev_disp_data,color_norm=colors.LogNorm())
-    plt.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_Event_Dislay.png"))
+    plt.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_Event_Dislay.png"))
         
     fig_N, ax_N = plt.subplots(1, 1)
     ax_N.scatter(combined_PMT_data, combined_N_data, color='red', alpha=0.6, s=10)  
     ax_N.set_title('N vs. PMT')
     ax_N.set_xlabel('PMT')
     ax_N.set_ylabel('N')
-    fig_N.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_N.png"))
+    fig_N.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_N.png"))
         
     fig_Q0, ax_Q0 = plt.subplots(1, 1)
     ax_Q0.scatter(combined_PMT_data, combined_Q0_data, color='red', alpha=0.6, s=10)  
     ax_Q0.set_title('Q0 vs. PMT')
     ax_Q0.set_xlabel('PMT')
     ax_Q0.set_ylabel('Q0')
-    fig_Q0.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_Q0.png"))
+    fig_Q0.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_Q0.png"))
         
     fig_s0, ax_s0 = plt.subplots(1, 1)
     ax_s0.scatter(combined_PMT_data, combined_s0_data, color='red', alpha=0.6, s=10)  
     ax_s0.set_title('s0 vs. PMT')
     ax_s0.set_xlabel('PMT')
     ax_s0.set_ylabel('s0')
-    fig_s0.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_s0.png"))
+    fig_s0.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_s0.png"))
         
     fig_Q1, ax_Q1 = plt.subplots(1, 1)
     ax_Q1.scatter(combined_PMT_data, combined_Q1_data, color='red', alpha=0.6, s=10)  
     ax_Q1.set_title('Q1 vs. PMT')
     ax_Q1.set_xlabel('PMT')
     ax_Q1.set_ylabel('Q1')
-    fig_Q1.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_Q1.png"))
+    fig_Q1.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_Q1.png"))
         
     fig_s1, ax_s1 = plt.subplots(1, 1)
     ax_s1.scatter(combined_PMT_data, combined_s1_data, color='red', alpha=0.6, s=10)  
     ax_s1.set_title('s1 vs. PMT')
     ax_s1.set_xlabel('PMT')
     ax_s1.set_ylabel('s1')
-    fig_s1.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_s1.png"))
+    fig_s1.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_s1.png"))
         
     fig_w, ax_w = plt.subplots(1, 1)
     ax_w.scatter(combined_PMT_data, combined_w_data, color='red', alpha=0.6, s=10)  
     ax_w.set_title('w vs. PMT')
     ax_w.set_xlabel('PMT')
     ax_w.set_ylabel('w')
-    fig_w.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_w.png"))
+    fig_w.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_w.png"))
         
     fig_alpha, ax_alpha = plt.subplots(1, 1)
     ax_alpha.scatter(combined_PMT_data, combined_alpha_data, color='red', alpha=0.6, s=10)  
     ax_alpha.set_title('alpha vs. PMT')
     ax_alpha.set_xlabel('PMT')
     ax_alpha.set_ylabel('alpha')
-    fig_alpha.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_alpha.png"))
+    fig_alpha.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_alpha.png"))
         
     fig_chi, ax_chi = plt.subplots(1, 1)
     ax_chi.scatter(combined_PMT_data, combined_chi_data, color='red', alpha=0.6, s=10)  
     ax_chi.set_title('chi/NDF vs. PMT')
     ax_chi.set_xlabel('PMT')
     ax_chi.set_ylabel('chi?NDF')
-    fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_chi.png"))
-
-    columns = ['card', 'channel', 'N', 'Q0', 's0', 'Q1', 's1', 'mu', 'w', 'alpha', 'r2', 'chi/NDF', 'slot', 'position']
-    for i in columns:
-       fig_gainmu, ax_gainmu = plt.subplots(1, 1)
-       ax_gainmu.scatter(combined_gain_data, combined_mu_data, color='red', alpha=0.6, s=10)  
-       ax_gainmu.set_title('gain vs. mu')
-       ax_gainmu.set_xlabel('gain')
-       ax_gainmu.set_ylabel('mu')
-       fig_gainmu.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gainVSmu.png"))
+    fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_chi.png"))
 
     figures = {}
     axes = {}
@@ -257,9 +248,6 @@ def create_combined_histogram(base_path, run):
        arr_x = np.asarray(series_x).flatten()
        arr_y = np.asarray(series_y).flatten()
 
-       series_x_reset = series_x.reset_index(drop=True)
-       series_y_reset = series_y.reset_index(drop=True)
-       
        combined_df = pd.DataFrame({
            'x': arr_x,
            'y': arr_y
@@ -283,10 +271,10 @@ def create_combined_histogram(base_path, run):
 
        if i == 'chi/NDF': 
            save = 'chi'
-           filename = f"Run_{DEFAULT_RUN_NUM}_gainVS{save}.png"
+           filename = f"Run_{run}_gainVS{save}.png"
            figures[i].savefig(os.path.join(FIGURE_DIR, filename))
        else:
-           filename = f"Run_{DEFAULT_RUN_NUM}_gainVS{i}.png"
+           filename = f"Run_{run}_gainVS{i}.png"
            figures[i].savefig(os.path.join(FIGURE_DIR, filename))
            plt.close(figures[i])
        j += 1
@@ -302,7 +290,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--base-path",   type=str, required=True,
                         help="Directory containing input pickle files")
-    parser.add_argument("--run",         type=int, required=True,
+    parser.add_argument("--run",         type=str, required=True,
                         help="Run number")
     
     args = parser.parse_args()
