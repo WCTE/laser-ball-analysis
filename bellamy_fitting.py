@@ -474,18 +474,14 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
     logger.info(f"Found {len(file_list)} files to process")
     
     fit_arr = []
-    counter = 0
     for file_path in file_list:
         logger.info(f"Fitting {file_path}")
         data = []
         with uproot.open(file_path) as file:
-            for tree_name in file.keys():
-
-                tree = file[tree_name]  
-                branches = ["channel_ids", "charges", "pmt_positions"]
-                card_id = int(re.search(r'\d+', file.keys()[counter]).group())
-                counter += 1
+            for tree_name, tree in file.items():
+                card_id = int(re.search(r'\d+', tree_name).group())
                 if int(card_id) != int(card): continue 
+                branches = ["channel_ids", "charges", "pmt_positions"]
                 data = tree.arrays(branches, library="np")
                 fit_data = charge_fit(data, run_num, model="bellamy", remove_sat=remove_sat, card_id=str(card_id))
                 fit_arr.extend(fit_data)
