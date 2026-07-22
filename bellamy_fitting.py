@@ -434,8 +434,8 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
             
             gaus_result_array[row] = fit_data
             fig_gaus.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gaus_card_{card}.pdf"))
-            fig_gaus_res.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gaus_card_{card}_res.png"))
-            fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{DEFAULT_RUN_NUM}_gaus_card_{card}_chi.png"))
+            fig_gaus_res.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gaus_card_{card}_res.png"))
+            fig_chi.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gaus_card_{card}_chi.png"))
             
             try:
                 r2 = 0  
@@ -537,8 +537,8 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
                 if int(card_id) != int(card): continue 
                 branches = ["channel_ids", "charges", "pmt_positions", "times"]
                 data = tree.arrays(branches, library="np")
-    fit_data = charge_fit(data, run_num, model="bellamy", remove_sat=remove_sat, card_id=str(card_id))
-    fit_arr.extend(fit_data)
+                fit_data = charge_fit(data, run_num, model="bellamy", remove_sat=remove_sat, card_id=str(card_id))
+                fit_arr.extend(fit_data)
 
     # Create results DataFrame
     fig_gain, ax_gain = plt.subplots(1, 1)
