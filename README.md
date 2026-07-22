@@ -168,50 +168,8 @@ python process_waveforms_for_charge_distributions.py \
     --base-path R2307/data --run 2307 \
     --out-file R2307/processed/hits_no_monitor.root \
     --no-use-monitor-pmt
-
-# Step 3: run the fitting code
-python bellamy_fitting.py --base-path R2307/processed/hits_hybrid.root --run 2307 --card 1 --out-file ./results/
 ```
 
 ## Charge distribution analysis
 
 An example notebook for plotting histograms of charge distributions per PMT is `lb_charge_distributions.ipynb`. This notebook reads output ROOT files from `process_pmt_waveforms.py` and produces charge distribution histograms for each PMT, comparing the three different approaches for files created for run 2307 using each approach.
-
-
-## PMT Charge Distribution Fitting Script
-
-Description
-
-This script fits PMT charge distributions using the Bellamy model with the lmfit library. It takes as input the output of the waveform processinig code as described above. The charging fitting for a single mPMT can be done in a few minutes and for the all PMTs ~2 hours. 
-
-Features
-
-Fitting Models:
-Bellamy Model: Fits PMT response using a combination of Gaussian and pedestal response functions.
-Gaussian Model: For the pedestal peak
-
-Additional Requirements:
-EventDisplay (WCTE event display code, included in this branch of the analysis code).
-
-Usage
-
-Run the script from the command line with the following arguments:
-
-python bellamy_fitting.py --base-path <input_directory> --run <run_number> --card <card_number> --out-file <output_path>
-
---base-path: Directory containing input ROOT files.
---run: Run number (e.g., 2307).
---card: Card number (identifier for the PMT card).
---out-file: Path to save the output.
-
-Example
-
-python bellamy_fitting.py --base-path R2307/processed/hits_hybrid.root --run 2307 --card 1 --out-file ./results/
-
-summary plots can then be generated with the pickle_to_plot.py script
-
-
-Contact
-
-For issues or questions related to the fitting code, email jnugent@ic.ac.uk.
-
