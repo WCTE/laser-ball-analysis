@@ -396,7 +396,7 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                 params = pmt_model.make_params(**temp_params, method='brute', max_nfev=100000)
                 params['Q0'].set(vary=False)
                 params['s0'].set(vary=False)
-                fit_start = 50 + params['Q0'] + 15
+                fit_start = 50 + params['Q0'].value + 15
                 result = pmt_model.fit(hist[round(fit_start):], params, x=bin_centres[round(fit_start):])
                 
                 if result.success:
