@@ -72,7 +72,7 @@ INITIAL_PARAMS = {
     'Q1': {'value': 130, 'min': 110, 'max': 160},
     's1': {'value': 50, 'min': 40, 'max': 70},
     'alpha': {'value': 0.008, 'min': 1e-6, 'max': 0.04},
-    'mu': {'value': 0.05, 'min': 0.05, 'max': 20},
+    'mu': {'value': 0.01, 'min': 0.05, 'max': 20},
     'w': {'value': 0.01, 'min': 0.001, 'max': 0.5},
 }
 
@@ -287,24 +287,21 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
     for row in range(0,no_row,1):
         counter += 1
         card = card_id
-        channel = row
-        unfiltered_charges = data["charges"][data["channel_ids"] == channel]
-        unfiltered_times = data["times"][data["channel_ids"] == channel]
+        channel = data['channel_ids'][row]
+        unfiltered_charges = data["charges"][data["channel_ids"]==row]
+        unfiltered_times = data["times"][data["channel_ids"]==row]
 
         time_threshold = 1e12  # Replace with your chosen threshold
         mask = unfiltered_times < time_threshold
         charges = unfiltered_charges[mask]
         times = unfiltered_times[mask]
 
-        charges = data["charges"][data["channel_ids"]==channel]
-        times = data["times"][data["channel_ids"]==channel]
+        charges = data["charges"][data["channel_ids"]==row]
+        times = data["times"][data["channel_ids"]==row]
         
         num_bins = 100
-        if len(times) == 0:
-             times_bins = np.linspace(0, 1, num_bins)
-        else:
-             data_min, data_max = np.min(times), np.max(times)
-             times_bins = np.linspace(data_min, data_max, num_bins)
+        data_min, data_max = np.min(times), np.max(times)
+        times_bins = np.linspace(data_min, data_max, num_bins)
         
         # Create histogram
         bins = np.arange(*PLOT_CONFIG['bins'])
@@ -429,11 +426,11 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                     
                 else:
                     logger.warning(f"Fit failed for Card {card} Channel {channel}")
-                    fit_data = [card, channel] + [None] * 5
+                    fit_data = [card, channel] + [None] * 10
                     
             except Exception as e:
                 logger.error(f"Error fitting Card {card} Channel {channel}: {e}")
-                fit_data = [card, channel] + [None] * 5
+                fit_data = [card, channel] + [None] * 10
             
             gaus_result_array[row] = fit_data
             fig_gaus.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_gaus_card_{card}.pdf"))
@@ -487,11 +484,11 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
                     
                 else:
                     logger.warning(f"Fit failed for Card {card} Channel {channel}")
-                    fit_data = [card, channel] + [None] * 12
+                    fit_data = [card, channel] + [None] * 10
                     
             except Exception as e:
                 logger.error(f"Error fitting Card {card} Channel {channel}: {e}")
-                fit_data = [card, channel] + [None] * 12
+                fit_data = [card, channel] + [None] * 10
             result_array[row] = fit_data
             fig.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_bellamy_card_{card}.pdf"))
             fig_res.savefig(os.path.join(FIGURE_DIR, f"Run_{run}_bellamy_card_{card}_res.pdf"))
@@ -558,9 +555,7 @@ def fit_file(base_path, run_num: str, card: str, out_file, remove_sat: bool = Fa
         threshold = 0.20 * 140
         outliers = fit_frame[abs(fit_frame['Q1'] - mean_gain) > threshold]
         if not outliers.empty:
-            out_dir = Path(out_file) / str(run_num)
-            out_dir.mkdir(parents=True, exist_ok=True)
-            with open(out_dir / 'outlier.txt', 'a', encoding='utf-8') as f:
+            with open(f'{out_file}/{run_num}/outlier.txt', 'a') as f:
                 f.write(outliers.to_string(index=False))
                 f.write('\n')
 

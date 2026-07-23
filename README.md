@@ -206,7 +206,7 @@ python bellamy_fitting.py --base-path <input_directory> --run <run_number> --car
 
 Example
 
-python bellamy_fitting.py --base-path R2307/processed/hits_hybrid.root --run 2307 --card 1 --out-file ./results/
+python bellamy_fitting.py --base-path R2307/processed/ --run 2307 --card 1 --out-file ./results/
 
 summary plots can then be generated with the pickle_to_plot.py script
 
