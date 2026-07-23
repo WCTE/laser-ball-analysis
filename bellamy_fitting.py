@@ -293,7 +293,7 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
 
         time_threshold = None  # Replace with your chosen threshold
         if time_threshold is not None:
-            mask = unfiltered_times < time_threshold
+            mask = times < time_threshold
             charges = charges[mask]
             times = times[mask]
 
