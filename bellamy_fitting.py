@@ -288,16 +288,15 @@ def charge_fit(data: pd.DataFrame, run, model: str = "bellamy",
         counter += 1
         card = card_id
         channel = row
-        unfiltered_charges = data["charges"][data["channel_ids"] == channel]
-        unfiltered_times = data["times"][data["channel_ids"] == channel]
+        charges = data["charges"][data["channel_ids"] == channel]
+        times = data["times"][data["channel_ids"] == channel]
 
-        time_threshold = 1e12  # Replace with your chosen threshold
-        mask = unfiltered_times < time_threshold
-        charges = unfiltered_charges[mask]
-        times = unfiltered_times[mask]
+        time_threshold = None  # Replace with your chosen threshold
+        if time_threshold is not None:
+            mask = unfiltered_times < time_threshold
+            charges = charges[mask]
+            times = times[mask]
 
-        charges = data["charges"][data["channel_ids"]==channel]
-        times = data["times"][data["channel_ids"]==channel]
         
         num_bins = 100
         if len(times) == 0:
